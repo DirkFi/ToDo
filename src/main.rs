@@ -1,8 +1,7 @@
 use colored::Colorize;
 use std::env;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
-use std::str::FromStr;
 
 struct ToDo {
     finished: bool,
@@ -175,7 +174,8 @@ impl Save {
                 }
             }
         }
-        self.save_to_file("./todo_list.txt");
+        self.save_to_file("./todo_list.txt")
+            .expect("Save file after delete fails!!");
     }
 }
 
@@ -183,7 +183,7 @@ fn main() -> io::Result<()> {
     let mut loaded_save = match Save::load_from_file("todo_list.txt") {
         Ok(todo) => todo,
         Err(_) => {
-            let mut file = File::create("./todo_list.txt")?;
+            File::create("./todo_list.txt")?;
             Save {
                 num: 1,
                 list: Vec::new(),
