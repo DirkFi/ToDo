@@ -137,20 +137,42 @@ impl Save {
         }
     }
 
-    fn delete(&mut self, delete_idx: usize) {
-        let result = (self.list.iter()).position(|x| x.idx == delete_idx);
-        match result {
-            Some(index) => {
-                self.list.remove(index);
-                self.num -= 1;
-                for todo in &mut self.list {
-                    if todo.idx > delete_idx {
-                        todo.idx -= 1;
+    fn delete(&mut self, delete_content: &str) {
+        if let Ok(delete_idx) = delete_content.parse::<usize>() {
+            let result = (self.list.iter()).position(|x| x.idx == delete_idx);
+            match result {
+                Some(index) => {
+                    self.list.remove(index);
+                    self.num -= 1;
+                    for todo in &mut self.list {
+                        if todo.idx > delete_idx {
+                            todo.idx -= 1;
+                        }
                     }
                 }
+                None => {
+                    panic!("The index you try to delete does not exist.");
+                }
             }
-            None => {
-                panic!("The index you try to delete does not exist.");
+        } else {
+            // content is a text-based, not usize number
+            let result = (self.list.iter()).position(|x| x.content == delete_content);
+            match result {
+                Some(index) => {
+                    let delete_idx = self.list[index].idx;
+                    self.list.remove(index);
+                    self.num -= 1;
+                    for todo in &mut self.list {
+                        if todo.idx > delete_idx {
+                            todo.idx -= 1;
+                        }
+                    }
+                }
+                None => {
+                    panic!(
+                        "The content you try to delete does not exist in the current to-do list."
+                    );
+                }
             }
         }
         self.save_to_file("./todo_list.txt");
@@ -180,8 +202,7 @@ fn main() -> io::Result<()> {
             }
             "add" => loaded_save.add(args[2].clone(), "todo_list.txt")?,
             "rm" => {
-                let n: usize = FromStr::from_str(&args[2]).unwrap();
-                loaded_save.delete(n);
+                loaded_save.delete(&args[2]);
             }
             "done" => loaded_save.finish(&args[2])?,
             &_ => loaded_save.showtodo(),
