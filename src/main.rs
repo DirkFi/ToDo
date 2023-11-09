@@ -15,6 +15,132 @@ struct Save {
 }
 
 impl Save {
+    fn add(&mut self, s_list: &[String], file_path: &str) -> std::io::Result<()> {
+        for ss in s_list {
+            let s = ss.to_string();
+            // Check if the `ToDo` with the same content already exists.
+            if self.list.iter().any(|todo| todo.content == s) {
+                // If the content exists, we return early without adding.
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    "ToDo with this content already exists",
+                ));
+            }
+
+            self.num += 1;
+            let new_idx = self.num;
+
+            let new_todo = ToDo {
+                finished: false,
+                content: s,
+                idx: new_idx,
+            };
+
+            // Add the new ToDo to the list in memory
+            self.list.push(new_todo);
+
+            // Now, let's append this new ToDo to a file.
+            let mut file = OpenOptions::new()
+                .append(true) // Open the file in append mode.
+                .create(true) // If the file does not exist, create it.
+                .open(file_path)?; // Open the file, return the error if there is one.
+
+            // Write the new ToDo to the file.
+            writeln!(
+                file,
+                "{},false,{}",
+                new_idx,
+                self.list.last().unwrap().content
+            )?;
+        }
+        Ok(())
+    }
+
+    fn finish(&mut self, identifiers: &[String]) -> Result<(), io::Error> {
+        for identifier in identifiers {
+            if let Ok(idx) = identifier.parse::<usize>() {
+                // If `identifier` can be parsed into a number, it's an index.
+                for tmp_todo in &mut self.list {
+                    if tmp_todo.idx == idx {
+                        tmp_todo.finished = true;
+                        break;
+                    }
+                }
+            } else {
+                // If `identifier` cannot be parsed into a number, treat it as content.
+                for tmp_todo in &mut self.list {
+                    if &(tmp_todo.content) == identifier {
+                        tmp_todo.finished = true;
+                        break;
+                    }
+                }
+            }
+        }
+        self.save_to_file("./todo_list.txt")
+    }
+
+    fn showtodo(&self) {
+        let mut show: Vec<String> = Vec::new();
+        for tmp_todo in &self.list {
+            if !tmp_todo.finished {
+                show.push(tmp_todo.idx.to_string() + ". " + &tmp_todo.content.clone());
+            } else {
+                show.push(
+                    tmp_todo.idx.to_string()
+                        + ". "
+                        + &(tmp_todo.content.strikethrough().to_string()),
+                );
+            }
+        }
+        for show_string in show.iter() {
+            println!("{}", show_string);
+        }
+    }
+
+    fn delete(&mut self, delete_contents: &[String]) {
+        for delete_content in delete_contents {
+            if let Ok(delete_idx) = delete_content.parse::<usize>() {
+                let result = (self.list.iter()).position(|x| x.idx == delete_idx);
+                match result {
+                    Some(index) => {
+                        self.list.remove(index);
+                        self.num -= 1;
+                        for todo in &mut self.list {
+                            if todo.idx > delete_idx {
+                                todo.idx -= 1;
+                            }
+                        }
+                    }
+                    None => {
+                        panic!("The index you try to delete does not exist.");
+                    }
+                }
+            } else {
+                // content is a text-based, not usize number
+                let result = (self.list.iter()).position(|x| &x.content == delete_content);
+                match result {
+                    Some(index) => {
+                        let delete_idx = self.list[index].idx;
+                        self.list.remove(index);
+                        self.num -= 1;
+                        for todo in &mut self.list {
+                            if todo.idx > delete_idx {
+                                todo.idx -= 1;
+                            }
+                        }
+                    }
+                    None => {
+                        panic!(
+                        "The content you try to delete does not exist in the current to-do list."
+                    );
+                    }
+                }
+            }
+        }
+        self.save_to_file("./todo_list.txt")
+            .expect("Save file after delete fails!!");
+    }
+
     fn save_to_file(&self, path: &str) -> Result<(), io::Error> {
         let mut file = File::create(path)?;
         for todo in &self.list {
@@ -23,7 +149,7 @@ impl Save {
                 "{},{},{}",
                 todo.idx,
                 todo.finished,
-                todo.content.replace("\n", "\\n")
+                todo.content.replace('\n', "\\n")
             )?;
         }
         Ok(())
@@ -56,129 +182,13 @@ impl Save {
 
         Ok(Self { num, list })
     }
-
-    fn add(&mut self, s: String, file_path: &str) -> std::io::Result<()> {
-        // Check if the `ToDo` with the same content already exists.
-        if self.list.iter().any(|todo| todo.content == s) {
-            // If the content exists, we return early without adding.
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists,
-                "ToDo with this content already exists",
-            ));
-        }
-
-        let new_idx = self.num;
-        self.num += 1;
-
-        let new_todo = ToDo {
-            finished: false,
-            content: s,
-            idx: new_idx,
-        };
-
-        // Add the new ToDo to the list in memory
-        self.list.push(new_todo);
-
-        // Now, let's append this new ToDo to a file.
-        let mut file = OpenOptions::new()
-            .append(true) // Open the file in append mode.
-            .create(true) // If the file does not exist, create it.
-            .open(file_path)?; // Open the file, return the error if there is one.
-
-        // Write the new ToDo to the file.
-        writeln!(
-            file,
-            "{},{},{}",
-            new_idx,
-            false,
-            self.list.last().unwrap().content
-        )?;
-
-        Ok(())
-    }
-
-    fn finish(&mut self, identifier: &str) -> Result<(), io::Error> {
-        if let Ok(idx) = identifier.parse::<usize>() {
-            // If `identifier` can be parsed into a number, it's an index.
-            for tmp_todo in &mut self.list {
-                if tmp_todo.idx == idx {
-                    tmp_todo.finished = true;
-                    break;
-                }
-            }
-        } else {
-            // If `identifier` cannot be parsed into a number, treat it as content.
-            for tmp_todo in &mut self.list {
-                if tmp_todo.content == identifier {
-                    tmp_todo.finished = true;
-                    break;
-                }
-            }
-        }
-        self.save_to_file("./todo_list.txt")
-    }
-
-    fn showtodo(&self) {
-        let mut show: Vec<String> = Vec::new();
-        for tmp_todo in &self.list {
-            if !tmp_todo.finished {
-                show.push(tmp_todo.idx.to_string() + ". " + &tmp_todo.content.clone());
-            } else {
-                show.push(
-                    tmp_todo.idx.to_string()
-                        + ". "
-                        + &(tmp_todo.content.strikethrough().to_string()),
-                );
-            }
-        }
-        for show_string in show.iter() {
-            println!("{}", show_string);
-        }
-    }
-
-    fn delete(&mut self, delete_content: &str) {
-        if let Ok(delete_idx) = delete_content.parse::<usize>() {
-            let result = (self.list.iter()).position(|x| x.idx == delete_idx);
-            match result {
-                Some(index) => {
-                    self.list.remove(index);
-                    self.num -= 1;
-                    for todo in &mut self.list {
-                        if todo.idx > delete_idx {
-                            todo.idx -= 1;
-                        }
-                    }
-                }
-                None => {
-                    panic!("The index you try to delete does not exist.");
-                }
-            }
-        } else {
-            // content is a text-based, not usize number
-            let result = (self.list.iter()).position(|x| x.content == delete_content);
-            match result {
-                Some(index) => {
-                    let delete_idx = self.list[index].idx;
-                    self.list.remove(index);
-                    self.num -= 1;
-                    for todo in &mut self.list {
-                        if todo.idx > delete_idx {
-                            todo.idx -= 1;
-                        }
-                    }
-                }
-                None => {
-                    panic!(
-                        "The content you try to delete does not exist in the current to-do list."
-                    );
-                }
-            }
-        }
-        self.save_to_file("./todo_list.txt")
-            .expect("Save file after delete fails!!");
-    }
 }
-
+/*
+* ToDo:
+* 1. make functions can read multiple inputs
+* 2. make program a command in terminal
+* 3. add function called empty to remove all the lists inside the to-do list
+*/
 fn main() -> io::Result<()> {
     let mut loaded_save = match Save::load_from_file("todo_list.txt") {
         Ok(todo) => todo,
@@ -200,11 +210,11 @@ fn main() -> io::Result<()> {
                 println!("method success!");
                 loaded_save.showtodo();
             }
-            "add" => loaded_save.add(args[2].clone(), "todo_list.txt")?,
+            "add" => loaded_save.add(&args[2..], "todo_list.txt")?,
             "rm" => {
-                loaded_save.delete(&args[2]);
+                loaded_save.delete(&args[2..]);
             }
-            "done" => loaded_save.finish(&args[2])?,
+            "done" => loaded_save.finish(&args[2..])?,
             &_ => loaded_save.showtodo(),
         }
     } else {
