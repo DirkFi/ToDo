@@ -211,7 +211,7 @@ fn main() -> io::Result<()> {
                 loaded_save.showtodo();
             }
             "add" => loaded_save.add(&args[2..], "todo_list.txt")?,
-            "rm" => {
+            "delete" => {
                 loaded_save.delete(&args[2..]);
             }
             "done" => loaded_save.finish(&args[2..])?,
