@@ -56,7 +56,7 @@ impl Save {
         Ok(())
     }
 
-    fn finish(&mut self, identifiers: &[String]) -> Result<(), io::Error> {
+    fn finish(&mut self, identifiers: &[String], file_path: &str) -> Result<(), io::Error> {
         for identifier in identifiers {
             if let Ok(idx) = identifier.parse::<usize>() {
                 // If `identifier` can be parsed into a number, it's an index.
@@ -76,7 +76,7 @@ impl Save {
                 }
             }
         }
-        self.save_to_file("./todo_list.txt")
+        self.save_to_file(file_path)
     }
 
     fn showtodo(&self) {
@@ -97,7 +97,7 @@ impl Save {
         }
     }
 
-    fn delete(&mut self, delete_contents: &[String]) {
+    fn delete(&mut self, delete_contents: &[String], file_path: &str) {
         for delete_content in delete_contents {
             if let Ok(delete_idx) = delete_content.parse::<usize>() {
                 let result = (self.list.iter()).position(|x| x.idx == delete_idx);
@@ -137,7 +137,7 @@ impl Save {
                 }
             }
         }
-        self.save_to_file("./todo_list.txt")
+        self.save_to_file(file_path)
             .expect("Save file after delete fails!!");
     }
 
@@ -182,18 +182,30 @@ impl Save {
 
         Ok(Self { num, list })
     }
+
+    fn empty(&mut self, file_path: &str) -> Result<(), io::Error> {
+        self.list.clear();
+        self.num = 1;
+        // Open the file in write mode and truncate it
+        let _ = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(file_path)?;
+        Ok(())
+    }
 }
 /*
 * ToDo:
 * 1. make functions can read multiple inputs
 * 2. make program a command in terminal
 * 3. add function called empty to remove all the lists inside the to-do list
+* 4. 封装文件名
 */
 fn main() -> io::Result<()> {
-    let mut loaded_save = match Save::load_from_file("todo_list.txt") {
+    let mut loaded_save = match Save::load_from_file("/tmp/todo_list.txt") {
         Ok(todo) => todo,
         Err(_) => {
-            File::create("./todo_list.txt")?;
+            File::create("/tmp/todo_list.txt")?;
             Save {
                 num: 1,
                 list: Vec::new(),
@@ -210,11 +222,12 @@ fn main() -> io::Result<()> {
                 println!("method success!");
                 loaded_save.showtodo();
             }
-            "add" => loaded_save.add(&args[2..], "todo_list.txt")?,
+            "add" => loaded_save.add(&args[2..], "/tmp/todo_list.txt")?,
             "delete" => {
-                loaded_save.delete(&args[2..]);
+                loaded_save.delete(&args[2..], "/tmp/todo_list.txt");
             }
-            "done" => loaded_save.finish(&args[2..])?,
+            "done" => loaded_save.finish(&args[2..], "/tmp/todo_list.txt")?,
+            "clear" => loaded_save.empty("/tmp/todo_list.txt")?,
             &_ => loaded_save.showtodo(),
         }
     } else {
