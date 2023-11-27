@@ -15,8 +15,8 @@ struct Save {
 }
 
 impl Save {
-    fn add(&mut self, s_list: &[String], file_path: &str) -> std::io::Result<()> {
-        for ss in s_list {
+    fn add(&mut self, add_list: &[String], file_path: &str) -> std::io::Result<()> {
+        for ss in add_list {
             let s = ss.to_string();
             // Check if the `ToDo` with the same content already exists.
             if self.list.iter().any(|todo| todo.content == s) {
@@ -53,6 +53,7 @@ impl Save {
                 self.list.last().unwrap().content
             )?;
         }
+        self.showtodo();
         Ok(())
     }
 
@@ -183,6 +184,35 @@ impl Save {
         Ok(Self { num, list })
     }
 
+    fn rename(&mut self, rename_content: &str, adjust_content: &str, file_path: &str) {
+        if let Ok(rename_idx) = rename_content.parse::<usize>() {
+            let result = (self.list.iter()).position(|x| x.idx == rename_idx);
+            match result {
+                Some(index) => {
+                    self.list[index].content = adjust_content.to_string();
+                }
+                None => {
+                    panic!("The index you try to rename does not exist.");
+                }
+            }
+        } else {
+            // content is a text-based, not usize number
+            let idx = (self.list.iter()).position(|x| x.content == rename_content);
+            match idx {
+                Some(index) => {
+                    self.list[index].content = adjust_content.to_string();
+                }
+                None => {
+                    panic!(
+                        "The content you try to rename does not exist in the current to-do list."
+                    );
+                }
+            }
+        }
+        self.save_to_file(file_path)
+            .expect("Save file after rename fails!!");
+    }
+
     fn empty(&mut self, file_path: &str) -> Result<(), io::Error> {
         self.list.clear();
         self.num = 1;
@@ -200,12 +230,14 @@ impl Save {
 * 2. make program a command in terminal
 * 3. add function called empty to remove all the lists inside the to-do list
 * 4. 封装文件名
+* 5. add rename function to adjust wrong inputs
 */
 fn main() -> io::Result<()> {
-    let mut loaded_save = match Save::load_from_file("/tmp/todo_list.txt") {
+    const SAVE_FILE_NAME: &str = "/tmp/todo_list.txt";
+    let mut loaded_save = match Save::load_from_file(SAVE_FILE_NAME) {
         Ok(todo) => todo,
         Err(_) => {
-            File::create("/tmp/todo_list.txt")?;
+            File::create(SAVE_FILE_NAME)?;
             Save {
                 num: 1,
                 list: Vec::new(),
@@ -222,42 +254,18 @@ fn main() -> io::Result<()> {
                 println!("method success!");
                 loaded_save.showtodo();
             }
-            "add" => loaded_save.add(&args[2..], "/tmp/todo_list.txt")?,
+            "add" => loaded_save.add(&args[2..], SAVE_FILE_NAME)?,
             "delete" => {
-                loaded_save.delete(&args[2..], "/tmp/todo_list.txt");
+                loaded_save.delete(&args[2..], SAVE_FILE_NAME);
             }
-            "done" => loaded_save.finish(&args[2..], "/tmp/todo_list.txt")?,
-            "clear" => loaded_save.empty("/tmp/todo_list.txt")?,
+            "done" => loaded_save.finish(&args[2..], SAVE_FILE_NAME)?,
+            "clear" => loaded_save.empty(SAVE_FILE_NAME)?,
+            "rename" => loaded_save.rename(&args[2], &args[3], SAVE_FILE_NAME),
             &_ => loaded_save.showtodo(),
         }
     } else {
         loaded_save.showtodo();
     }
-
-    // let my_input: Vec<String> = vec![
-    //     String::from("coding"),
-    //     String::from("sports"),
-    //     String::from("gaming"),
-    // ];
-    // for ss in my_input {
-    //     loaded_save.add(ss, "todo_list.txt")?;
-    // }
-    // loaded_save.showtodo();
-    //
-    // // loaded_save.save_to_file("todo_list.txt")?;
-    // loaded_save.finish("1")?;
-    // loaded_save.showtodo();
-    // println!("************");
-    // begin.delete(1);
-    // begin.showtodo();
-    // Save the state to a file
-
-    // loaded_save.save_to_file("todo_list.txt")?;
-    // Load the state from a file
-    // let mut loaded_save = Save::load_from_file("todo_list.txt")?;
-    // loaded_save.showtodo();
-
-    // You can now continue to use loaded_save as your Save object
 
     Ok(())
 }

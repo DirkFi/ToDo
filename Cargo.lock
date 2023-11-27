@@ -78,7 +78,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "to-do-list"
+name = "todo"
 version = "0.1.0"
 dependencies = [
  "colored",
