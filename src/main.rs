@@ -226,11 +226,6 @@ impl Save {
 }
 /*
 * ToDo:
-* 1. make functions can read multiple inputs
-* 2. make program a command in terminal
-* 3. add function called empty to remove all the lists inside the to-do list
-* 4. 封装文件名
-* 5. add rename function to adjust wrong inputs
 */
 fn main() -> io::Result<()> {
     const SAVE_FILE_NAME: &str = "/tmp/todo_list.txt";
