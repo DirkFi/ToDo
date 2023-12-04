@@ -16,10 +16,14 @@ struct Save {
 
 impl Save {
     fn add(&mut self, add_list: &[String], file_path: &str) -> std::io::Result<()> {
-        for ss in add_list {
-            let s = ss.to_string();
+        for add_content_str in add_list {
+            let add_content_string = add_content_str.to_string();
             // Check if the `ToDo` with the same content already exists.
-            if self.list.iter().any(|todo| todo.content == s) {
+            if self
+                .list
+                .iter()
+                .any(|todo| todo.content == add_content_string)
+            {
                 // If the content exists, we return early without adding.
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,
@@ -32,7 +36,7 @@ impl Save {
 
             let new_todo = ToDo {
                 finished: false,
-                content: s,
+                content: add_content_string,
                 idx: new_idx,
             };
 
@@ -57,10 +61,10 @@ impl Save {
         Ok(())
     }
 
-    fn finish(&mut self, identifiers: &[String], file_path: &str) -> Result<(), io::Error> {
-        for identifier in identifiers {
-            if let Ok(idx) = identifier.parse::<usize>() {
-                // If `identifier` can be parsed into a number, it's an index.
+    fn finish(&mut self, finishs: &[String], file_path: &str) -> Result<(), io::Error> {
+        for finish_ in finishs {
+            if let Ok(idx) = finish_.parse::<usize>() {
+                // If `finish_` can be parsed into a number, it's an index.
                 for tmp_todo in &mut self.list {
                     if tmp_todo.idx == idx {
                         tmp_todo.finished = true;
@@ -68,9 +72,9 @@ impl Save {
                     }
                 }
             } else {
-                // If `identifier` cannot be parsed into a number, treat it as content.
+                // If `finish_` cannot be parsed into a number, treat it as content.
                 for tmp_todo in &mut self.list {
-                    if &(tmp_todo.content) == identifier {
+                    if &(tmp_todo.content) == finish_ {
                         tmp_todo.finished = true;
                         break;
                     }
@@ -140,6 +144,8 @@ impl Save {
         }
         self.save_to_file(file_path)
             .expect("Save file after delete fails!!");
+
+        self.showtodo();
     }
 
     fn save_to_file(&self, path: &str) -> Result<(), io::Error> {
@@ -226,6 +232,7 @@ impl Save {
 }
 /*
 * ToDo:
+* 1. change the position of todolist
 */
 fn main() -> io::Result<()> {
     const SAVE_FILE_NAME: &str = "/tmp/todo_list.txt";
@@ -245,17 +252,15 @@ fn main() -> io::Result<()> {
     if args.len() > 1 {
         let command = &args[1];
         match &command[..] {
-            "list" => {
-                println!("method success!");
-                loaded_save.showtodo();
-            }
+            // list
+            "ls" => loaded_save.showtodo(),
             "add" => loaded_save.add(&args[2..], SAVE_FILE_NAME)?,
-            "delete" => {
-                loaded_save.delete(&args[2..], SAVE_FILE_NAME);
-            }
-            "done" => loaded_save.finish(&args[2..], SAVE_FILE_NAME)?,
+            // delete
+            "del" => loaded_save.delete(&args[2..], SAVE_FILE_NAME),
+            "do" => loaded_save.finish(&args[2..], SAVE_FILE_NAME)?,
             "clear" => loaded_save.empty(SAVE_FILE_NAME)?,
-            "rename" => loaded_save.rename(&args[2], &args[3], SAVE_FILE_NAME),
+            // rename
+            "r" => loaded_save.rename(&args[2], &args[3], SAVE_FILE_NAME),
             &_ => loaded_save.showtodo(),
         }
     } else {
